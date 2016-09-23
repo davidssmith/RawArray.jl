@@ -1,5 +1,5 @@
 
-using RA
+using RawArray
 using Base.Test
 
 function test_wr(t, dims)
