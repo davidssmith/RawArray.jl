@@ -14,10 +14,8 @@ function test_wr(t, dims)
     println("PASSED")
 end
 
-typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, Int16, Int32, Int64, Int128, Uint8, Uint16, Uint32, Uint64]
-
+typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64]
 maxdims = 4
-
 for t in typelist, n in 1:maxdims
-    test_wr(t, [2:n+1])
+    test_wr(t, collect(2:n+1))
 end
