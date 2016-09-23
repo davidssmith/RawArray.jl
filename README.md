@@ -1,10 +1,10 @@
-Welcome to the RA.jl package!
+Welcome to the RawArray.jl package!
 ===========================
 
 Introduction
 ------------
 
-RA is a simple file format for storing n-dimensional arrays. RA stands for **raw array**
+RawArray (RA) is a simple file format for storing n-dimensional arrays. RA stands for **raw array**
 and should be pronounced *arr-ay*, although it is not a coincidence that the
 mispronunciation *rah* (as in "raw" in some dialects) also makes sense.
 
@@ -125,16 +125,16 @@ Getting
 You can clone the git repository from inside Julia with
 
 ```
-Pkg.clone(“https://github.com/davidssmith/RA.jl.git”)
+Pkg.clone(“https://github.com/davidssmith/RawArray.jl.git”)
 ```
 
 Usage
 -----
 
-To use RA, simply add the following line to your file:
+To use RawArray, simply add the following line to your file:
 
 ```
-using RA
+using RawArray
 ```
 
 Now you can call `raread` and `rawrite` for Julia objects of type `Array{T,N}`.
@@ -146,7 +146,7 @@ Notice the Julia version also contains a `raquery()` function that produces a YA
 Getting Help
 ------------
 
-For help, file an issue on the [bug tracker](http://github.com/davidssmith/ra.jl/issues) or email one of the authors.  Third party help is welcome and can be contributed through pull requests.
+For help, file an issue on the [bug tracker](http://github.com/davidssmith/RawArray.jl/issues) or email one of the authors.  Third party help is welcome and can be contributed through pull requests.
 
 Authors
 -------
