@@ -125,7 +125,7 @@ Getting
 You can clone the git repository from inside Julia with
 
 ```
-Pkg.clone(“https://github.com/davidssmith/ra.jl.git”)
+Pkg.clone(“https://github.com/davidssmith/RA.jl.git”)
 ```
 
 Usage
@@ -139,7 +139,7 @@ using RA
 
 Now you can call `raread` and `rawrite` for Julia objects of type `Array{T,N}`.
 
-A test file called `runtests.jl` has been included, as well as a demo RA file in `examples/test.ra`.  You can test the code on your machine at the command line by running `julia runtests.jl`. If the tests pass, you'll get a message saying so.
+A test file called `test/runtests.jl` has been included, as well as a demo RA file in `examples/test.ra`.  You can test the code on your machine at the command line by running `julia runtests.jl`. If the tests pass, you'll get a message saying so.
 
 Notice the Julia version also contains a `raquery()` function that produces a YAML dump of the file header.
 
