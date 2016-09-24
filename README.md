@@ -1,6 +1,9 @@
 Welcome to the RawArray.jl package!
 ===========================
 
+[![Build Status](https://travis-ci.org/davidssmith/RawArray.jl.png?branch=master)](https://travis-ci.org/davidssmith/RawArray.jl)
+
+
 Introduction
 ------------
 
