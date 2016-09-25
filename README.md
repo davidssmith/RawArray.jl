@@ -128,7 +128,7 @@ Getting
 You can clone the git repository from inside Julia with
 
 ```
-Pkg.clone("https://github.com/davidssmith/RawArray.jl.git")
+Pkg.add("RawArray")
 ```
 
 Usage
