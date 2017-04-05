@@ -104,7 +104,7 @@ function raread(path::AbstractString)
   h = getheader(fd)
   juliatype = eval(parse("$(TYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   data = read(fd, juliatype, round(Int,h.size/sizeof(juliatype)))
-  data = reshape(data, [Int64(_) for _ in h.dims]...)
+  data = reshape(data, [Int64(d) for d in h.dims]...)
   close(fd)
   return data
 end
@@ -120,7 +120,7 @@ function rawrite{T,N}(a::Array{T,N}, path::AbstractString)
     UInt64(sizeof(T)),
     UInt64(length(a)*sizeof(eltype(a))),
     UInt64(ndims(a)),
-    UInt64[_ for _ in size(a)],
+    UInt64[d for d in size(a)],
     a)
   close(fd)
 end
