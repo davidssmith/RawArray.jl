@@ -17,8 +17,10 @@ end
 typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64]
 maxdims = 4
 for t in typelist, n in 1:maxdims
-  test_wr(t, collect(2:n+1))
-  if t <: Integer
-    test_wr(t, collect(2:n+1); compress=true)
+  if isdefined(Symbol(t))
+    test_wr(t, collect(2:n+1))
+    if t <: Integer
+      test_wr(t, collect(2:n+1); compress=true)
+    end
   end
 end
