@@ -2,6 +2,9 @@ Welcome to the RawArray.jl package!
 ===========================
 
 [![Build Status](https://travis-ci.org/davidssmith/RawArray.jl.png?branch=master)](https://travis-ci.org/davidssmith/RawArray.jl)
+[![Build
+status](https://ci.appveyor.com/api/projects/status/8d0t2jm2c6ak69gy?svg=true)](https://ci.appveyor.com/project/davidssmith/rawarray-jl)
+
 
 
 Introduction
