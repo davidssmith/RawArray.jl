@@ -22,13 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 module RawArray
 
 export raquery, raread, rawrite
 
 const version = v"0.0.1"
 
+include("LEB128.jl")
+
 FLAG_BIG_ENDIAN = UInt64(1<<0)
+FLAG_COMPRESSED = UInt64(1<<1)
+
 MAX_BYTES = UInt64(1<<31)
 MAGIC_NUMBER = UInt64(0x7961727261776172)
 
@@ -71,6 +76,9 @@ type RAHeader
   dims::Vector{UInt64}
 end
 
+import Base.size
+size(h::RAHeader) = sizeof(UInt64)*(5 + h.ndims)
+
 function getheader(io::IOStream)
   magic, flags, eltype, elbits, size, ndims = read(io, UInt64, 6)
   dims = read(io, UInt64, ndims)
@@ -88,6 +96,7 @@ function raquery(path::AbstractString)
   endian = (h.flags & FLAG_BIG_ENDIAN) != 0 ? "big" : "little"
   assert(endian == "little") # big not implemented yet
   push!(q, "endian: $endian")
+  push!(q, "compressed: $(h.flags & FLAG_COMPRESSED)")
   push!(q, "type: $juliatype")
   push!(q, "size: $(h.size)")
   push!(q, "dimension: $(h.ndims)")
@@ -102,26 +111,43 @@ end
 function raread(path::AbstractString)
   fd = open(path, "r")
   h = getheader(fd)
-  juliatype = eval(parse("$(TYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
-  data = read(fd, juliatype, round(Int,h.size/sizeof(juliatype)))
-  data = reshape(data, [Int64(d) for d in h.dims]...)
+  dtype = eval(parse("$(TYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
+  if h.flags & FLAG_COMPRESSED != 0
+    nelem = prod(h.dims)
+    bytestoread = stat(path).size - size(h)
+    dataenc = read(fd, bytestoread)
+    data = reshape(LEB128.decode(dataenc, dtype, nelem), map(signed, h.dims)...)
+  else
+    data = read(fd, dtype, round(Int,h.size/sizeof(dtype)))
+    data = reshape(data, [Int64(d) for d in h.dims]...)
+  end
   close(fd)
   return data
 end
 
-function rawrite{T,N}(a::Array{T,N}, path::AbstractString)
+function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
   flags = UInt64(0)
   if ENDIAN_BOM == 0x01020304
     flags |=  FLAG_BIG_ENDIAN
   end
   fd = open(path, "w")
+  if compress && issubtype(T, Integer)
+    flags |= FLAG_COMPRESSED
+  elseif compress
+    error("Can only compress Integer data. Continuing uncompressed.")
+  end
   write(fd, MAGIC_NUMBER, flags,
     UInt64(TYPE_NAME_TO_NUM[T]),
     UInt64(sizeof(T)),
     UInt64(length(a)*sizeof(eltype(a))),
     UInt64(ndims(a)),
-    UInt64[d for d in size(a)],
-    a)
+    UInt64[d for d in size(a)])
+  if flags & FLAG_COMPRESSED != 0
+    write(fd, LEB128.encode(a))
+  else
+    write(fd, a)
+  end
+
   close(fd)
 end
 
