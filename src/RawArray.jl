@@ -113,10 +113,10 @@ function raread(path::AbstractString)
   h = getheader(fd)
   dtype = eval(parse("$(TYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   if h.flags & FLAG_COMPRESSED != 0
-    nelem = prod(h.dims)
-    bytestoread = stat(path).size - size(h)
-    dataenc = read(fd, bytestoread)
-    data = reshape(LEB128.decode(dataenc, dtype, nelem), map(signed, h.dims)...)
+    dataenc = Array{UInt8}(stat(path).size - size(h))
+    nb = readbytes!(fd, dataenc; all=true)
+    dataenc = dataenc[1:nb]
+    data = reshape(LEB128.decode(dataenc, dtype, prod(h.dims)), map(signed, h.dims)...)
   else
     data = read(fd, dtype, round(Int,h.size/sizeof(dtype)))
     data = reshape(data, [Int64(d) for d in h.dims]...)
