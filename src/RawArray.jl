@@ -25,11 +25,11 @@
 
 module RawArray
 
+using LittleEndianBase128
+
 export raquery, raread, rawrite
 
 const version = v"0.0.1"
-
-include("LEB128.jl")
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
 FLAG_COMPRESSED = UInt64(1<<1)
@@ -116,7 +116,7 @@ function raread(path::AbstractString)
     dataenc = Array{UInt8}(stat(path).size - size(h))
     nb = readbytes!(fd, dataenc; all=true)
     dataenc = dataenc[1:nb]
-    data = reshape(LEB128.decode(dataenc, dtype, prod(h.dims)), map(signed, h.dims)...)
+    data = reshape(decode(dataenc, dtype, prod(h.dims)), map(signed, h.dims)...)
   else
     data = read(fd, dtype, round(Int,h.size/sizeof(dtype)))
     data = reshape(data, [Int64(d) for d in h.dims]...)
@@ -143,7 +143,7 @@ function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
     UInt64(ndims(a)),
     UInt64[d for d in size(a)])
   if flags & FLAG_COMPRESSED != 0
-    write(fd, LEB128.encode(a))
+    write(fd, encode(a))
   else
     write(fd, a)
   end
