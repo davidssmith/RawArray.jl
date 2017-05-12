@@ -29,10 +29,12 @@ using LittleEndianBase128
 
 export raquery, raread, rawrite
 
-const version = v"0.0.1"
+const version = v"0.0.2"
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
 FLAG_COMPRESSED = UInt64(1<<1)
+
+ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED
 
 MAX_BYTES = UInt64(1<<31)
 MAGIC_NUMBER = UInt64(0x7961727261776172)
@@ -112,6 +114,11 @@ function raread(path::AbstractString)
   fd = open(path, "r")
   h = getheader(fd)
   dtype = eval(parse("$(TYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
+  if (h.flags & ~ALL_KNOWN_FLAGS) != 0
+    warn("This RA file must have been written by a newer version of this code.")
+    warn("Correctness of input is not guaranteed. Update your version of the")
+    warn("RawArray package to stop this warning.")
+  end
   if h.flags & FLAG_COMPRESSED != 0
     dataenc = Array{UInt8}(stat(path).size - size(h))
     nb = readbytes!(fd, dataenc; all=true)
