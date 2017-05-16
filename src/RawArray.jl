@@ -87,7 +87,11 @@ function getheader(io::IOStream)
   return RAHeader(flags,eltype,elbits,size,ndims,dims)
 end
 
-# print the file header as YAML
+"""
+    raquery(filename)
+
+    Retrieve the header of an RA file as a string of YAML. 
+"""
 function raquery(path::AbstractString)
   q = AbstractString[]
   push!(q, "---\nname: $path")
@@ -110,6 +114,12 @@ function raquery(path::AbstractString)
   join(q, "\n")
 end
 
+
+"""
+    raread(filename)
+
+    Read an RA file and return the contents as a formatted N-d array.
+"""
 function raread(path::AbstractString)
   fd = open(path, "r")
   h = getheader(fd)
@@ -132,6 +142,14 @@ function raread(path::AbstractString)
   return data
 end
 
+
+"""
+    rawrite(array, filename, [compress=false])
+
+    Write an array to a file named filename. If the `compress` flag is set
+    to true and the array contains integers, then use LEB128 compression to
+    compress the data before writing.
+"""
 function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
   flags = UInt64(0)
   if ENDIAN_BOM == 0x01020304
