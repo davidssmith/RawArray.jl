@@ -32,6 +32,10 @@ In addition to int, uint, and float of arbitrary sizes, RA also supports
 
 As an aside, the RA format is technically recursive (or fractal?!). You could store an array of RA files in a RA file if you want by defining the file as a composite type.
 
+Definitive RA Implementation
+-----------
+Besides supplying support for the RA format to the Julia community, this package is intended to provide the definitive implementation of the RA format.  New features will be implemented here first before being ported to the main [RA repository](http://github.com/davidssmith/ra). If something exists in this package that you would like in another language, feel free to implement it yourself and submit a pull request to the [RA repository](http://github.com/davidssmith/ra).
+
 Format
 -----------
 
