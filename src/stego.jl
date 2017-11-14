@@ -14,6 +14,13 @@ function setlast7(x::Float32, n::UInt8)
     reinterpret(Float32, i)
 end
 
+function setlastbits(x::Float32, n::UInt8, nbits::UInt8)
+    i = reinterpret(UInt32, x)
+    i = (i >> nbits) << nbits
+    i = i | (n & ((UInt32(1) << nbits) - UInt32(1)))
+    reinterpret(Float32, i)
+end
+
 function getlast8(x::Float32)
     i = reinterpret(UInt32, x)
     return UInt8(i & 0xff)
@@ -22,6 +29,11 @@ end
 function getlast7(x::Float32)
     i = reinterpret(UInt32, x)
     return UInt8(i & 0x7f)
+end
+
+function getlastbits(x::Float32, nbits::UInt8)
+    i = reinterpret(UInt32, x)
+    return UInt8(i & ((UInt32(1) << nbits) - UInt32(1)))
 end
 
 function embed{N}(data::Array{Float32,N}, text::Array{UInt8,1}; ignorenonascii=true)
