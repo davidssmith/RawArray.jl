@@ -29,24 +29,27 @@ using LittleEndianBase128
 
 export raquery, raread, rawrite
 
+include("compression.jl")
+include("steganography.jl")
+
 const version = v"0.0.2"
 
-FLAG_BIG_ENDIAN = UInt64(1<<0)
-FLAG_COMPRESSED = UInt64(1<<1)
+const FLAG_BIG_ENDIAN = UInt64(1<<0)
+const FLAG_COMPRESSED = UInt64(1<<1)
 
-ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED
+const ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED
 
-MAX_BYTES = UInt64(1<<31)
-MAGIC_NUMBER = UInt64(0x7961727261776172)
+const MAX_BYTES = UInt64(1<<31)
+const MAGIC_NUMBER = UInt64(0x7961727261776172)
 
-TYPE_NUM_TO_NAME = Dict(
+const TYPE_NUM_TO_NAME = Dict(
   0 => "user",
   1 => "Int",
   2 => "UInt",
   3 => "Float",
   4 => "Complex"
 )
-TYPE_NAME_TO_NUM = Dict(
+const TYPE_NAME_TO_NUM = Dict(
   "user" => 0,
   Int8 => 1,
   Int16 => 1,
@@ -138,10 +141,10 @@ function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
     flags |=  FLAG_BIG_ENDIAN
   end
   fd = open(path, "w")
-  if compress && issubtype(T, Integer)
+  if compress && issubtype(T, Integer) # not compressing floats yet
     flags |= FLAG_COMPRESSED
-  elseif compress
-    error("Can only compress Integer data. Continuing uncompressed.")
+#  elseif compress
+#    error("Can only compress Integer data. Continuing uncompressed.")
   end
   write(fd, MAGIC_NUMBER, flags,
     UInt64(TYPE_NAME_TO_NUM[T]),

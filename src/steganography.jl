@@ -1,42 +1,37 @@
 # steganography of single precision float arrays
 
-function setlast8(x::Float32, n::UInt8)
-    i = reinterpret(UInt32, x)
+function setlast8{T}(x::T, n::UInt8)
+    i = reinterpret(Unsigned, x)
     i = (i >> 8) << 8
     i = i | n
-    reinterpret(Float32, i)
+    reinterpret(T, i)
 end
 
-function setlast7(x::Float32, n::UInt8)
-    i = reinterpret(UInt32, x)
+function setlast7{T}(x::T, n::UInt8)
+    i = reinterpret(Unsigned, x)
     i = (i >> 7) << 7
     i = i | (n & 0x7f)
-    reinterpret(Float32, i)
+    reinterpret(T, i)
 end
 
-function setlastbits(x::Float32, n::UInt8, nbits::UInt8)
-    i = reinterpret(UInt32, x)
+function setlastbits{T}(x::T, n::UInt8, nbits::UInt8)
+    i = reinterpret(Unsigned, x)
+    S = typeof(i)
     i = (i >> nbits) << nbits
-    i = i | (n & ((UInt32(1) << nbits) - UInt32(1)))
-    reinterpret(Float32, i)
+    i = i | (n & ((S(1) << nbits) - S(1)))
+    reinterpret(T, i)
 end
 
-function getlast8(x::Float32)
-    i = reinterpret(UInt32, x)
-    return UInt8(i & 0xff)
+getlast8{T}(x::T) = UInt8(reinterpret(Unsigned, x) & 0xff)
+getlast7{T}(x::T) = UInt8(reinterpret(Unsigned, x) & 0x7f)
+
+function getlastbits{T}(x::T, nbits::UInt8)
+    i = reinterpret(Unsigned, x)
+    S = typeof(i)
+    return UInt8(i & ((S(1) << nbits) - S(1)))
 end
 
-function getlast7(x::Float32)
-    i = reinterpret(UInt32, x)
-    return UInt8(i & 0x7f)
-end
-
-function getlastbits(x::Float32, nbits::UInt8)
-    i = reinterpret(UInt32, x)
-    return UInt8(i & ((UInt32(1) << nbits) - UInt32(1)))
-end
-
-function embed{N}(data::Array{Float32,N}, text::Array{UInt8,1}; ignorenonascii=true)
+function embed{N}(data::Array{Float32,N}, text::Array{UInt8,1}; ignorenonascii::Bool=true)
     @assert length(text) <= length(data)
     y = copy(data)   # make sure we have enough space
     for j in 1:length(text)
@@ -57,7 +52,7 @@ function embed{N}(data::Array{Float32,N}, text::Array{UInt8,1}; ignorenonascii=t
     y
 end
 
-function embed{N}(data::Array{Complex64,N}, text::Array{UInt8,1}; ina=true)
+function embed{N}(data::Array{Complex64,N}, text::Array{UInt8,1}; ina::Bool=true)
     d = size(data)
     y = reinterpret(Float32, data[:])
     y = embed(y, text; ignorenonascii=ina)
