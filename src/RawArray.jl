@@ -32,7 +32,7 @@ export raquery, raread, rawrite
 include("compression.jl")
 include("steganography.jl")
 
-const version = v"0.0.2"
+const version = v"0.0.3"
 
 const FLAG_BIG_ENDIAN = UInt64(1<<0)
 const FLAG_COMPRESSED = UInt64(1<<1)
