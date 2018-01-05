@@ -1,6 +1,6 @@
 
 include("../src/RawArray.jl")
-using RawArray
+using .RawArray
 using Base.Test
 
 print("raquery ... ")
