@@ -1,7 +1,7 @@
 
 include("../src/RawArray.jl")
-include("../src/compression.jl")
-include("../src/steganography.jl")
+using .RawArray
+
 using Base.Test
 
 function test_wr(t, dims; compress=false)
