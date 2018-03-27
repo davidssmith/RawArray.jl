@@ -28,7 +28,9 @@ In addition to int, uint, and float of arbitrary sizes, RA also supports
 
 (1) **complex floats**: which other common formats, such as HDF5, don't have.
 
-(2) **composite types**: RA handles reading and writing these, but the encoding and decoding of those is left to the user, since only they can know the structure of their `struct`. Decoding can be as simple as a typecast, however, for types of fixed size.
+(2) **Booleans**: both Boolean arrays with 8-bits per value and the compact BitArrays
+
+(3) **composite types**: RA handles reading and writing these, but the encoding and decoding of those is left to the user, since only they can know the structure of their `struct`. Decoding can be as simple as a typecast, however, for types of fixed size.
 
 As an aside, the RA format is technically recursive (or fractal?!). You could store an array of RA files in a RA file if you want by defining the file as a composite type.
 
@@ -65,6 +67,7 @@ The file format is a simple concatenation of a header array and a data array. Th
 | 2    | unsigned integer
 | 3    | floating point (IEEE-754 standard)
 | 4    | complex float (pairs of IEEE floats)
+| 5    | Boolean
 
 The width of these types is defined separately in the `elbyte` field. For example,
 
