@@ -21,8 +21,8 @@ efficient. For scientific applications in particular, it can allow the simple
 storage of large arrays without a separate header file to store the
 dimensions and type metadata.
 
-> The fundamental philospohy of RawArray is
-> **what you save is what you read.**
+The fundamental philosophy of RawArray is
+**what you save is what you read.**
 
 In other words, the array after reading should look exactly like it did when you wrote it to disk.
 
