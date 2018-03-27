@@ -40,14 +40,15 @@ ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED
 MAX_BYTES = UInt64(1<<31)
 MAGIC_NUMBER = UInt64(0x7961727261776172)
 
-TYPE_NUM_TO_NAME = Dict(
+ELTYPE_NUM_TO_NAME = Dict(
   0 => "user",
   1 => "Int",
   2 => "UInt",
   3 => "Float",
-  4 => "Complex"
+  4 => "Complex",
+  5 => "Bool"
 )
-TYPE_NAME_TO_NUM = Dict(
+ELTYPE_NAME_TO_NUM = Dict(
   "user" => 0,
   Int8 => 1,
   Int16 => 1,
@@ -66,7 +67,8 @@ TYPE_NAME_TO_NUM = Dict(
   Complex64 => 4,
   Complex128 => 4,
   Complex{Float32} => 4,
-  Complex{Float64} => 4
+  Complex{Float64} => 4,
+  Bool => 5
   )
 
 #  header is 40 + 8*ndims bytes long
@@ -88,18 +90,22 @@ function getheader(io::IOStream)
   return RAHeader(flags,eltype,elbits,size,ndims,dims)
 end
 
-"""
-    raquery(filename)
+#=
+  raquery(filename)
 
-    Retrieve the header of an RA file as a string of YAML. 
-"""
+  Retrieve the header of an RA file as a string of YAML.
+=#
 function raquery(path::AbstractString)
   q = AbstractString[]
   push!(q, "---\nname: $path")
   fd = open(path,"r")
   h = getheader(fd)
   close(fd)
-  juliatype = eval(parse(TYPE_NUM_TO_NAME[h.eltype]*"$(h.elbyte*8)"))
+  if h.eltype == 5
+    juliatype = "Bool"
+  else
+    juliatype = ELTYPE_NUM_TO_NAME[h.eltype]*"$(h.elbyte*8)"
+  end
   endian = (h.flags & FLAG_BIG_ENDIAN) != 0 ? "big" : "little"
   assert(endian == "little") # big not implemented yet
   push!(q, "endian: $endian")
@@ -115,20 +121,23 @@ function raquery(path::AbstractString)
   join(q, "\n")
 end
 
+#=
+  raread(filename)
 
-"""
-    raread(filename)
-
-    Read an RA file and return the contents as a formatted N-d array.
-"""
+  Read an RA file and return the contents as a formatted N-d array.
+=#
 function raread(path::AbstractString)
   fd = open(path, "r")
   h = getheader(fd)
-  dtype = eval(parse("$(TYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   if (h.flags & ~ALL_KNOWN_FLAGS) != 0
     warn("This RA file must have been written by a newer version of this code.")
     warn("Correctness of input is not guaranteed. Update your version of the")
     warn("RawArray package to stop this warning.")
+  end
+  if h.eltype == 5
+    dtype = Bool
+  else
+    dtype = eval(parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   end
   if h.flags & FLAG_COMPRESSED != 0
     dataenc = Array{UInt8}(stat(path).size - size(h))
@@ -143,37 +152,62 @@ function raread(path::AbstractString)
   return data
 end
 
+rawritedata(io::IO, a::BitArray{N}; compress=false) where N = write(io, a.chunks)
+function rawritedata(io::IO, a::Array{Bool,N}; compress=false) where N
+    if compress
+        write(io, BitArray(a).chunks)
+    else
+        write(io, a)
+    end
+end
+function rawritedata(io::IO, a::Array{T,N}; compress=false) where {T, N}
+  if compress && T <: Integer
+    write(io, encode(a))
+  else
+    write(io, a)
+  end
+end
 
-"""
-    rawrite(array, filename, [compress=false])
+#=
+  rawrite(array, filename, [compress=false])
 
-    Write an array to a file named filename. If the `compress` flag is set
-    to true and the array contains integers, then use LEB128 compression to
-    compress the data before writing.
-"""
+  Write an array to a file named filename. If the `compress` flag is set
+  to true and the array contains integers, then use LEB128 compression to
+  compress the data before writing.
+=#
+function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
+  # save BitArray as compressed Bool, compress flag is not used
+  flags = UInt64(0)
+  if ENDIAN_BOM == 0x01020304
+    flags |=  FLAG_BIG_ENDIAN
+  end
+  flags |= FLAG_COMPRESSED
+  fd = open(path, "w")
+  write(fd, MAGIC_NUMBER, flags,
+    UInt64(ELTYPE_NAME_TO_NUM[Bool]),
+    UInt64(sizeof(Bool)),
+    UInt64(length(a)*sizeof(Bool)),
+    UInt64(N),
+    UInt64[d for d in size(a)])
+  rawritedata(fd, a, compress=compress)
+  close(fd)
+end
 function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
   flags = UInt64(0)
   if ENDIAN_BOM == 0x01020304
     flags |=  FLAG_BIG_ENDIAN
   end
-  fd = open(path, "w")
-  if compress && issubtype(T, Integer)
+  if compress
     flags |= FLAG_COMPRESSED
-  elseif compress
-    error("Can only compress Integer data. Continuing uncompressed.")
   end
+  fd = open(path, "w")
   write(fd, MAGIC_NUMBER, flags,
-    UInt64(TYPE_NAME_TO_NUM[T]),
+    UInt64(ELTYPE_NAME_TO_NUM[T]),
     UInt64(sizeof(T)),
     UInt64(length(a)*sizeof(eltype(a))),
     UInt64(ndims(a)),
     UInt64[d for d in size(a)])
-  if flags & FLAG_COMPRESSED != 0
-    write(fd, encode(a))
-  else
-    write(fd, a)
-  end
-
+  rawritedata(fd, a, compress=compress)
   close(fd)
 end
 
