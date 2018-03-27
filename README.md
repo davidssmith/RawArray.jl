@@ -21,6 +21,11 @@ efficient. For scientific applications in particular, it can allow the simple
 storage of large arrays without a separate header file to store the
 dimensions and type metadata.
 
+> The fundamental philospohy of RawArray is
+> **what you save is what you read.**
+
+In other words, the array after reading should look exactly like it did when you wrote it to disk.
+
 I believe the world doesn't need another hierarchical data container. We already have one of
 those---it's called a filesystem. What is needed is a simple one-to-one mapping of data structures to disk files that preserves metadata and is fast and simple to read and write.
 
