@@ -33,9 +33,10 @@ export raquery, raread, rawrite
 const version = v"0.0.2"
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
-FLAG_COMPRESSED = UInt64(1<<1)
+FLAG_COMPRESSED = UInt64(1<<1)    # run-length encoding for Ints
+FLAG_BITS       = UInt64(1<<2)    # array element is a single bit
 
-ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED
+ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED | FLAG_BITS
 
 MAX_BYTES = UInt64(1<<31)
 MAGIC_NUMBER = UInt64(0x7961727261776172)
@@ -46,7 +47,7 @@ ELTYPE_NUM_TO_NAME = Dict(
   2 => "UInt",
   3 => "Float",
   4 => "Complex",
-  5 => "Bool"
+  5 => "Bool",
 )
 ELTYPE_NAME_TO_NUM = Dict(
   "user" => 0,
@@ -68,7 +69,7 @@ ELTYPE_NAME_TO_NUM = Dict(
   Complex128 => 4,
   Complex{Float32} => 4,
   Complex{Float64} => 4,
-  Bool => 5
+  Bool => 5,
   )
 
 #  header is 40 + 8*ndims bytes long
@@ -110,6 +111,7 @@ function raquery(path::AbstractString)
   assert(endian == "little") # big not implemented yet
   push!(q, "endian: $endian")
   push!(q, "compressed: $(h.flags & FLAG_COMPRESSED)")
+  push!(q, "bits: $(h.flags & FLAG_BITS)")
   push!(q, "type: $juliatype")
   push!(q, "size: $(h.size)")
   push!(q, "dimension: $(h.ndims)")
@@ -144,28 +146,16 @@ function raread(path::AbstractString)
     nb = readbytes!(fd, dataenc; all=true)
     dataenc = dataenc[1:nb]
     data = reshape(decode(dataenc, dtype, prod(h.dims)), map(signed, h.dims)...)
+  elseif h.flags & FLAG_BITS != 0
+    # read BitArray data
+    data = BitArray(h.dims)
+    data.chunks = read(fd, UInt64, h.size)
   else
     data = read(fd, dtype, round(Int,h.size/sizeof(dtype)))
     data = reshape(data, [Int64(d) for d in h.dims]...)
   end
   close(fd)
   return data
-end
-
-rawritedata(io::IO, a::BitArray{N}; compress=false) where N = write(io, a.chunks)
-function rawritedata(io::IO, a::Array{Bool,N}; compress=false) where N
-    if compress
-        write(io, BitArray(a).chunks)
-    else
-        write(io, a)
-    end
-end
-function rawritedata(io::IO, a::Array{T,N}; compress=false) where {T, N}
-  if compress && T <: Integer
-    write(io, encode(a))
-  else
-    write(io, a)
-  end
 end
 
 #=
@@ -181,17 +171,19 @@ function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
   if ENDIAN_BOM == 0x01020304
     flags |=  FLAG_BIG_ENDIAN
   end
-  flags |= FLAG_COMPRESSED
+  flags |= FLAG_COMPRESSED    # redundant, but emphasizes that it is compressed Bool
+  flags |= FLAG_BITS
   fd = open(path, "w")
-  write(fd, MAGIC_NUMBER, flags,
+  write(fd, MAGIC_NUMBER, flags,    # write the chunks as a 1-D UInt64 array
     UInt64(ELTYPE_NAME_TO_NUM[Bool]),
-    UInt64(sizeof(Bool)),
-    UInt64(length(a)*sizeof(Bool)),
-    UInt64(N),
+    UInt64(sizeof(eltype(a.chunks))),
+    UInt64(length(a.chunks)*sizeof(eltype(a.chunks))),
+    UInt64(length(a.chunks)),
     UInt64[d for d in size(a)])
-  rawritedata(fd, a, compress=compress)
+  write(fd, a.chunks)
   close(fd)
-end
+end    # TODO: write compressed Bool as BitArray?
+
 function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
   flags = UInt64(0)
   if ENDIAN_BOM == 0x01020304
@@ -207,7 +199,11 @@ function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
     UInt64(length(a)*sizeof(eltype(a))),
     UInt64(ndims(a)),
     UInt64[d for d in size(a)])
-  rawritedata(fd, a, compress=compress)
+  if compress && T <: Integer
+    write(io, encode(a))
+  else
+    write(io, a)
+  end
   close(fd)
 end
 
