@@ -141,15 +141,15 @@ function raread(path::AbstractString)
   else
     dtype = eval(parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   end
-  if h.flags & FLAG_COMPRESSED != 0
+  if h.flags & FLAG_COMPRESSED != 0 && h.flags & FLAG_BITS == 0
     dataenc = Array{UInt8}(stat(path).size - size(h))
     nb = readbytes!(fd, dataenc; all=true)
     dataenc = dataenc[1:nb]
     data = reshape(decode(dataenc, dtype, prod(h.dims)), map(signed, h.dims)...)
   elseif h.flags & FLAG_BITS != 0
     # read BitArray data
-    data = BitArray(h.dims)
-    data.chunks = read(fd, UInt64, h.size)
+    data = BitArray(h.dims...)
+    data.chunks = read(fd, UInt64, div(h.size,sizeof(UInt64)))
   else
     data = read(fd, dtype, round(Int,h.size/sizeof(dtype)))
     data = reshape(data, [Int64(d) for d in h.dims]...)
@@ -178,7 +178,7 @@ function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
     UInt64(ELTYPE_NAME_TO_NUM[Bool]),
     UInt64(sizeof(eltype(a.chunks))),
     UInt64(length(a.chunks)*sizeof(eltype(a.chunks))),
-    UInt64(length(a.chunks)),
+    UInt64(ndims(a)),
     UInt64[d for d in size(a)])
   write(fd, a.chunks)
   close(fd)

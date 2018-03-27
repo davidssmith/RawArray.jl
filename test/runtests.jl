@@ -29,7 +29,7 @@ typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, I
 maxdims = 4
 for t in typelist, n in 1:maxdims
   test_wr(t, collect(2:n+1))
-  if t <: Integer
+  if t <: Integer && t != BitArray
     test_wr(t, collect(2:n+1); compress=true)
   end
 end
