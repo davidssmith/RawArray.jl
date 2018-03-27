@@ -105,13 +105,13 @@ function raquery(path::AbstractString)
   if h.eltype == 5
     juliatype = "Bool"
   else
-    juliatype = ELTYPE_NUM_TO_NAME[h.eltype]*"$(h.elbyte*8)"
+    juliatype = eval(parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   end
   endian = (h.flags & FLAG_BIG_ENDIAN) != 0 ? "big" : "little"
   assert(endian == "little") # big not implemented yet
   push!(q, "endian: $endian")
   push!(q, "compressed: $(h.flags & FLAG_COMPRESSED)")
-  push!(q, "bits: $(h.flags & FLAG_BITS)")
+  #push!(q, "bits: $(h.flags & FLAG_BITS)")
   push!(q, "type: $juliatype")
   push!(q, "size: $(h.size)")
   push!(q, "dimension: $(h.ndims)")
@@ -200,9 +200,9 @@ function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
     UInt64(ndims(a)),
     UInt64[d for d in size(a)])
   if compress && T <: Integer
-    write(io, encode(a))
+    write(fd, encode(a))
   else
-    write(io, a)
+    write(fd, a)
   end
   close(fd)
 end

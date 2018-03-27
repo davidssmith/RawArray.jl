@@ -13,7 +13,11 @@ function test_wr(t, dims; compress=false)
   testfile = "tmp.ra"
   n = length(dims)
   print("Testing $n-d $t $(compress ? "compressed" : "uncompressed") ... ")
-  data = rand(t, dims...)
+  if t == BitArray
+    data = BitArray(rand(Bool, dims...))
+  else
+    data = rand(t, dims...)
+  end
   rawrite(data, testfile; compress=compress)
   data2 = raread(testfile)
   @test isequal(data, data2)
@@ -21,7 +25,7 @@ function test_wr(t, dims; compress=false)
   println("PASS")
 end
 
-typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64]
+typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Bool, BitArray]
 maxdims = 4
 for t in typelist, n in 1:maxdims
   test_wr(t, collect(2:n+1))
