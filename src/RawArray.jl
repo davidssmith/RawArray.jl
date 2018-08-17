@@ -30,7 +30,7 @@ using LittleEndianBase128
 
 export raquery, raread, rawrite
 
-const version = v"0.0.4"
+const version = v"0.0.3"
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
 FLAG_ENCODED    = UInt64(1<<1)    # run-length encoding for Ints

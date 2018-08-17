@@ -5,7 +5,7 @@ using Test
 
 print("raquery ... ")
 s = raquery("../examples/test.ra")
-@test s == "---\nname: ../examples/test.ra\nendian: little\ncompressed: 0\ntype: Complex{Float32}\nsize: 96\ndimension: 2\nshape:\n  - 3\n  - 4\n..."
+@test s == "---\nname: ../examples/test.ra\nendian: little\ncompressed: 0\nbits: 0\ntype: Complex{Float32}\nsize: 96\ndimension: 2\nshape:\n  - 3\n  - 4\n..."
 println("PASS")
 
 
