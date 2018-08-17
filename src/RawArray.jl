@@ -33,10 +33,10 @@ export raquery, raread, rawrite
 const version = v"0.0.4"
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
-FLAG_COMPRESSED = UInt64(1<<1)    # run-length encoding for Ints
+FLAG_ENCODED    = UInt64(1<<1)    # run-length encoding for Ints
 FLAG_BITS       = UInt64(1<<2)    # array element is a single bit
 
-ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_COMPRESSED | FLAG_BITS
+ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_ENCODED | FLAG_BITS
 
 MAX_BYTES = UInt64(1<<31)
 MAGIC_NUMBER = UInt64(0x7961727261776172)
@@ -117,8 +117,8 @@ function raquery(path::AbstractString)
   endian = (h.flags & FLAG_BIG_ENDIAN) != 0 ? "big" : "little"
   @assert endian == "little" # big not implemented yet
   push!(q, "endian: $endian")
-  push!(q, "compressed: $(h.flags & FLAG_COMPRESSED)")
-  #push!(q, "bits: $(h.flags & FLAG_BITS)")
+  push!(q, "compressed: $(h.flags & FLAG_ENCODED)")
+  push!(q, "bits: $(h.flags & FLAG_BITS)")
   push!(q, "type: $juliatype")
   push!(q, "size: $(h.size)")
   push!(q, "dimension: $(h.ndims)")
@@ -150,7 +150,7 @@ function raread(path::AbstractString)
   else
     dtype = eval(Meta.parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   end
-  if h.flags & FLAG_COMPRESSED != 0 && h.flags & FLAG_BITS == 0
+  if h.flags & FLAG_ENCODED != 0 && h.flags & FLAG_BITS == 0
     dataenc = Array{UInt8}(undef, stat(path).size - size(h))
     nb = readbytes!(fd, dataenc; all=true)
     dataenc = dataenc[1:nb]
@@ -182,7 +182,7 @@ function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
   if ENDIAN_BOM == 0x01020304
     flags |=  FLAG_BIG_ENDIAN
   end
-  flags |= FLAG_COMPRESSED    # redundant, but emphasizes that it is compressed Bool
+  flags |= FLAG_ENCODED    # redundant, but emphasizes that it is compressed Bool
   flags |= FLAG_BITS
   fd = open(path, "w")
   write(fd, MAGIC_NUMBER, flags,    # write the chunks as a 1-D UInt64 array
@@ -201,7 +201,7 @@ function rawrite(a::Array{T,N}, path::AbstractString; compress=false) where T wh
     flags |=  FLAG_BIG_ENDIAN
   end
   if compress
-    flags |= FLAG_COMPRESSED
+    flags |= FLAG_ENCODED
   end
   fd = open(path, "w")
   write(fd, MAGIC_NUMBER, flags,
