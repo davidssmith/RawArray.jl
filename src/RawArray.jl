@@ -30,7 +30,7 @@ using LittleEndianBase128
 
 export raquery, raread, rawrite
 
-const version = v"0.0.3"
+const version = v"0.0.4"
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
 FLAG_COMPRESSED = UInt64(1<<1)    # run-length encoding for Ints
@@ -64,16 +64,17 @@ ELTYPE_NAME_TO_NUM = Dict(
   Float16 => 3,
   Float32 => 3,
   Float64 => 3,
-  Complex32 => 4,
-  Complex64 => 4,
-  Complex128 => 4,
+  ComplexF16 => 4,
+  ComplexF32 => 4,
+  ComplexF64 => 4,
+  Complex{Float16} => 4,
   Complex{Float32} => 4,
   Complex{Float64} => 4,
   Bool => 5,
   )
 
 #  header is 40 + 8*ndims bytes long
-type RAHeader
+mutable struct RAHeader
   flags::UInt64  # file properties, such as endianness and future capabilities
   eltype::UInt64   # enum representing the element type in the array
   elbyte::UInt64    # enum representing the element type in the array
@@ -86,8 +87,11 @@ import Base.size
 size(h::RAHeader) = sizeof(UInt64)*(5 + h.ndims)
 
 function getheader(io::IOStream)
-  magic, flags, eltype, elbits, size, ndims = read(io, UInt64, 6)
-  dims = read(io, UInt64, ndims)
+  tmp = Array{UInt64}(undef, 6)
+  read!(io, tmp)
+  magic, flags, eltype, elbits, size, ndims = tmp
+  dims = Array{UInt64}(undef, ndims)
+  read!(io, dims)
   return RAHeader(flags,eltype,elbits,size,ndims,dims)
 end
 
@@ -104,11 +108,14 @@ function raquery(path::AbstractString)
   close(fd)
   if h.eltype == 5
     juliatype = "Bool"
+  elseif  h.eltype == 4
+    juliatype = "Complex{Float$(h.elbyte*4)}"
   else
-    juliatype = eval(parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
+    #juliatype = eval(Meta.parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
+    juliatype = "$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"
   end
   endian = (h.flags & FLAG_BIG_ENDIAN) != 0 ? "big" : "little"
-  assert(endian == "little") # big not implemented yet
+  @assert endian == "little" # big not implemented yet
   push!(q, "endian: $endian")
   push!(q, "compressed: $(h.flags & FLAG_COMPRESSED)")
   #push!(q, "bits: $(h.flags & FLAG_BITS)")
@@ -138,21 +145,25 @@ function raread(path::AbstractString)
   end
   if h.eltype == 5
     dtype = Bool
+  elseif h.eltype == 4
+    dtype = eval(Meta.parse("$(ELTYPE_NUM_TO_NAME[h.eltype]){Float$(h.elbyte*4)}"))
   else
-    dtype = eval(parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
+    dtype = eval(Meta.parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
   end
   if h.flags & FLAG_COMPRESSED != 0 && h.flags & FLAG_BITS == 0
-    dataenc = Array{UInt8}(stat(path).size - size(h))
+    dataenc = Array{UInt8}(undef, stat(path).size - size(h))
     nb = readbytes!(fd, dataenc; all=true)
     dataenc = dataenc[1:nb]
     data = reshape(decode(dataenc, dtype, prod(h.dims)), map(signed, h.dims)...)
   elseif h.flags & FLAG_BITS != 0
     # read BitArray data
-    data = BitArray(h.dims...)
-    data.chunks = read(fd, UInt64, div(h.size,sizeof(UInt64)))
+    data = BitArray(undef, h.dims...)
+    data.chunks = Array{UInt64}(undef, div(h.size,sizeof(UInt64)))
+    read!(fd, data.chunks)
   else
-    data = read(fd, dtype, round(Int,h.size/sizeof(dtype)))
-    data = reshape(data, [Int64(d) for d in h.dims]...)
+    #data = Array{dtype}(undef, round(Int,h.size/sizeof(dtype)))
+    data = Array{dtype}(undef, [Int64(d) for d in h.dims]...)
+    read!(fd, data)
   end
   close(fd)
   return data
@@ -184,7 +195,7 @@ function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
   close(fd)
 end    # TODO: write compressed Bool as BitArray?
 
-function rawrite{T,N}(a::Array{T,N}, path::AbstractString; compress=false)
+function rawrite(a::Array{T,N}, path::AbstractString; compress=false) where T where N
   flags = UInt64(0)
   if ENDIAN_BOM == 0x01020304
     flags |=  FLAG_BIG_ENDIAN

@@ -1,7 +1,7 @@
 
 include("../src/RawArray.jl")
 using .RawArray
-using Base.Test
+using Test
 
 print("raquery ... ")
 s = raquery("../examples/test.ra")
@@ -25,7 +25,7 @@ function test_wr(t, dims; compress=false)
   println("PASS")
 end
 
-typelist = [Float16, Float32, Float64, Complex32, Complex64, Complex128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Bool, BitArray]
+typelist = [Float16, Float32, Float64, Complex{Float16}, Complex{Float32}, Complex{Float64}, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Bool, BitArray]
 maxdims = 4
 for t in typelist, n in 1:maxdims
   test_wr(t, collect(2:n+1))
