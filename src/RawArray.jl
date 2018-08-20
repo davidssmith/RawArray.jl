@@ -27,16 +27,18 @@ __precompile__()
 module RawArray
 
 using LittleEndianBase128
+using CodecZlib
 
 export raquery, raread, rawrite
 
-const version = v"0.0.3"
+const version = v"0.0.4"
 
 FLAG_BIG_ENDIAN = UInt64(1<<0)
 FLAG_ENCODED    = UInt64(1<<1)    # run-length encoding for Ints
 FLAG_BITS       = UInt64(1<<2)    # array element is a single bit
+FLAG_COMPRESSED = UInt64(1<<3)    # array element is a single bit
 
-ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_ENCODED | FLAG_BITS
+ALL_KNOWN_FLAGS = FLAG_BIG_ENDIAN | FLAG_ENCODED | FLAG_BITS | FLAG_COMPRESSED
 
 MAX_BYTES = UInt64(1<<31)
 MAGIC_NUMBER = UInt64(0x7961727261776172)
@@ -117,7 +119,7 @@ function raquery(path::AbstractString)
   endian = (h.flags & FLAG_BIG_ENDIAN) != 0 ? "big" : "little"
   @assert endian == "little" # big not implemented yet
   push!(q, "endian: $endian")
-  push!(q, "compressed: $(h.flags & FLAG_ENCODED)")
+  push!(q, "compressed: $(h.flags & FLAG_ENCODED | h.flags & FLAG_COMPRESSED)")
   push!(q, "bits: $(h.flags & FLAG_BITS)")
   push!(q, "type: $juliatype")
   push!(q, "size: $(h.size)")
@@ -141,14 +143,19 @@ function raread(path::AbstractString)
   if (h.flags & ~ALL_KNOWN_FLAGS) != 0
     warn("This RA file must have been written by a newer version of this code.")
     warn("Correctness of input is not guaranteed. Update your version of the")
-    warn("RawArray package to stop this warning.")
+    warn("RawArray package to fix this problem.")
   end
+  # determine elemental type
   if h.eltype == 5
     dtype = Bool
   elseif h.eltype == 4
     dtype = eval(Meta.parse("$(ELTYPE_NUM_TO_NAME[h.eltype]){Float$(h.elbyte*4)}"))
   else
     dtype = eval(Meta.parse("$(ELTYPE_NUM_TO_NAME[h.eltype])$(h.elbyte*8)"))
+  end
+  # read array data
+  if h.flags & FLAG_COMPRESSED != 0
+    fd = GZipDecompressorStream(fd)
   end
   if h.flags & FLAG_ENCODED != 0 && h.flags & FLAG_BITS == 0
     dataenc = Array{UInt8}(undef, stat(path).size - size(h))
@@ -184,6 +191,9 @@ function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
   end
   flags |= FLAG_ENCODED    # redundant, but emphasizes that it is compressed Bool
   flags |= FLAG_BITS
+  if compress
+    flags |= FLAG_COMPRESSED
+  end
   fd = open(path, "w")
   write(fd, MAGIC_NUMBER, flags,    # write the chunks as a 1-D UInt64 array
     UInt64(ELTYPE_NAME_TO_NUM[Bool]),
@@ -191,7 +201,13 @@ function rawrite(a::BitArray{N}, path::AbstractString; compress=false) where N
     UInt64(length(a.chunks)*sizeof(eltype(a.chunks))),
     UInt64(ndims(a)),
     UInt64[d for d in size(a)])
-  write(fd, a.chunks)
+  if compress
+    stream = GZipCompressorStream(IOBuffer(Array(reinterpret(UInt8, x.chunks))))
+    write(fd, stream)
+    close(stream)
+  else
+    write(fd, a.chunks)
+  end
   close(fd)
 end    # TODO: write compressed Bool as BitArray?
 
@@ -201,7 +217,10 @@ function rawrite(a::Array{T,N}, path::AbstractString; compress=false) where T wh
     flags |=  FLAG_BIG_ENDIAN
   end
   if compress
-    flags |= FLAG_ENCODED
+    if T <: Integer
+      flags |= FLAG_ENCODED
+    end
+    flags |= FLAG_COMPRESSED
   end
   fd = open(path, "w")
   write(fd, MAGIC_NUMBER, flags,
@@ -211,7 +230,13 @@ function rawrite(a::Array{T,N}, path::AbstractString; compress=false) where T wh
     UInt64(ndims(a)),
     UInt64[d for d in size(a)])
   if compress && T <: Integer
-    write(fd, encode(a))
+    stream = GZipCompressorStream(IOBuffer(encode(a)))
+    write(fd, stream)
+    close(stream)
+  elseif compress
+    stream = GZipCompressorStream(IOBuffer(Array(reinterpret(UInt8, a))))
+    write(fd, stream)
+    close(stream)
   else
     write(fd, a)
   end
