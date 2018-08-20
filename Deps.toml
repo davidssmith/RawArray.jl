@@ -3,3 +3,10 @@ LittleEndianBase128 = "1724a1d5-ab78-548d-94b3-135c294f96cf"
 
 ["0.0.3"]
 LittleEndianBase128 = "1724a1d5-ab78-548d-94b3-135c294f96cf"
+
+["0.0.4"]
+LittleEndianBase128 = "1724a1d5-ab78-548d-94b3-135c294f96cf"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+
+
+
