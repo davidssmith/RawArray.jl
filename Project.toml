@@ -1,0 +1,16 @@
+name = "RawArray"
+uuid = "d3d335b2-f152-507c-820e-958e337efb65"
+version = "0.1.1"
+author = ["David S. Smith <david.smith@gmail.com>"]
+
+[deps]
+LittleEndianBase128 = "1724a1d5-ab78-548d-94b3-135c294f96cf"
+
+[compat]
+julia = "≥ 1.0.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
